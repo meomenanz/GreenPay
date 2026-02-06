@@ -2,95 +2,217 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GreenPay | Ultimate Admin & Notifs</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GreenPay | Premium Market</title>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore-compat.js"></script>
     <style>
-        :root { --green: #2ecc71; --dark: #0d0d0d; --card: #181818; --text: #ffffff; --admin: #ff4757; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--dark); color: var(--text); margin: 0; }
-        nav { background: #000; padding: 0 20px; display: flex; align-items: center; height: 60px; border-bottom: 2px solid var(--green); justify-content: space-between; position: sticky; top: 0; z-index: 1000; }
-        .logo { font-size: 22px; font-weight: 900; color: var(--green); }
-        .nav-links { display: flex; align-items: center; }
-        .nav-links span { margin-left: 15px; cursor: pointer; font-size: 13px; font-weight: 600; opacity: 0.7; position: relative; }
+        :root { 
+            --green: #00ff88; 
+            --green-dark: #00bd65;
+            --dark-bg: #0a0a0a; 
+            --card-bg: rgba(25, 25, 25, 0.8);
+            --text: #e0e0e0; 
+            --admin: #ff4757;
+            --glass: rgba(255, 255, 255, 0.03);
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body { 
+            font-family: 'Inter', -apple-system, sans-serif; 
+            background: var(--dark-bg); 
+            color: var(--text); 
+            margin: 0; 
+            line-height: 1.6;
+            overflow-x: hidden;
+            background-image: radial-gradient(circle at 50% -20%, #1a3a2a 0%, #0a0a0a 100%);
+            background-attachment: fixed;
+        }
+
+        /* Навигация */
+        nav { 
+            background: rgba(0, 0, 0, 0.8); 
+            backdrop-filter: blur(10px);
+            padding: 0 20px; 
+            display: flex; 
+            align-items: center; 
+            height: 70px; 
+            border-bottom: 1px solid rgba(0, 255, 136, 0.2);
+            justify-content: space-between; 
+            position: sticky; 
+            top: 0; 
+            z-index: 1000; 
+        }
+
+        .logo { font-size: 20px; font-weight: 900; color: var(--green); letter-spacing: 1px; }
+
+        .nav-links { display: flex; gap: 15px; }
+        .nav-links span { 
+            cursor: pointer; 
+            font-size: 12px; 
+            font-weight: 700; 
+            text-transform: uppercase;
+            opacity: 0.6; 
+            transition: 0.3s;
+            position: relative;
+            padding: 5px 0;
+        }
         .nav-links span.active { opacity: 1; color: var(--green); }
-        
-        /* Точка уведомления */
-        .dot::after { content: ''; position: absolute; top: -5px; right: -8px; width: 8px; height: 8px; background: var(--admin); border-radius: 50%; box-shadow: 0 0 5px var(--admin); }
+        .dot::after { content: ''; position: absolute; top: 0; right: -10px; width: 6px; height: 6px; background: var(--admin); border-radius: 50%; border: 2px solid var(--dark-bg); }
 
-        .container { max-width: 1000px; margin: 20px auto; padding: 0 15px; }
-        .page { display: none; } .page.active { display: block; }
-        .card { background: var(--card); border-radius: 12px; padding: 20px; border: 1px solid #2a2a2a; margin-bottom: 15px; }
-        
-        input, select, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #333; background: #222; color: white; box-sizing: border-box; }
-        button { background: var(--green); color: #000; font-weight: bold; border: none; cursor: pointer; }
-        
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
-        .product { background: var(--card); border: 1px solid #2a2a2a; border-radius: 12px; padding: 15px; }
+        /* Контейнер */
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; min-height: 100vh; }
+        .page { display: none; animation: fadeIn 0.4s ease; }
+        .page.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        .chat-wrap { display: grid; grid-template-columns: 220px 1fr; height: 500px; background: var(--card); border-radius: 12px; border: 1px solid #333; overflow: hidden; }
-        .chat-list { background: #111; border-right: 1px solid #333; overflow-y: auto; }
-        .chat-item { padding: 12px; border-bottom: 1px solid #222; cursor: pointer; font-size: 13px; transition: 0.3s; }
-        .chat-item.unread { border-left: 4px solid var(--green); background: #1a1a1a; }
-        
-        .messages { flex-grow: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; background: #0a0a0a; }
-        .msg { max-width: 75%; padding: 8px 12px; border-radius: 10px; font-size: 14px; }
-        .msg.me { align-self: flex-end; background: var(--green); color: black; }
-        .msg.other { align-self: flex-start; background: #333; }
+        /* Карточки */
+        .card { 
+            background: var(--card-bg); 
+            backdrop-filter: blur(5px);
+            border-radius: 16px; 
+            padding: 20px; 
+            border: 1px solid var(--glass); 
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
 
-        .admin-ctrl { border-left: 3px solid var(--admin); padding: 10px; background: #1a1a1a; margin-bottom: 10px; border-radius: 0 8px 8px 0; display: flex; justify-content: space-between; align-items: center; }
-        #auth-overlay { position: fixed; inset: 0; background: var(--dark); z-index: 2000; display: flex; align-items: center; justify-content: center; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        
+        .product { 
+            background: var(--card-bg); 
+            border: 1px solid var(--glass);
+            border-radius: 20px; 
+            padding: 24px; 
+            transition: 0.3s;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .product:hover { border-color: var(--green); transform: translateY(-5px); }
+        .product h3 { margin: 0 0 10px 0; color: #fff; font-size: 18px; }
+        .price { font-size: 24px; font-weight: 800; color: var(--green); margin: 15px 0; }
+        
+        /* Кнопки и инпуты */
+        input, select, button { 
+            width: 100%; padding: 14px; margin: 10px 0; 
+            border-radius: 12px; border: 1px solid #333; 
+            background: #1a1a1a; color: white; 
+            font-size: 15px; outline: none; transition: 0.3s;
+        }
+        input:focus { border-color: var(--green); background: #222; }
+        
+        button { 
+            background: linear-gradient(135deg, var(--green), var(--green-dark)); 
+            color: #000; font-weight: 800; border: none; cursor: pointer; 
+            text-transform: uppercase; letter-spacing: 1px;
+        }
+        button:active { transform: scale(0.98); }
+        button.secondary { background: #333; color: #fff; }
+
+        /* Чат */
+        .chat-wrap { 
+            display: flex; height: 70vh; background: var(--card-bg); 
+            border-radius: 20px; border: 1px solid var(--glass); overflow: hidden; 
+        }
+        .chat-list { width: 250px; background: rgba(0,0,0,0.3); border-right: 1px solid var(--glass); overflow-y: auto; }
+        .chat-item { padding: 15px; border-bottom: 1px solid var(--glass); cursor: pointer; transition: 0.2s; }
+        .chat-item:hover { background: var(--glass); }
+        .chat-item.unread { border-left: 4px solid var(--green); background: rgba(0,255,136,0.05); }
+
+        .chat-main { flex-grow: 1; display: flex; flex-direction: column; background: rgba(0,0,0,0.2); }
+        .messages { flex-grow: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .msg { max-width: 80%; padding: 12px 16px; border-radius: 18px; font-size: 14px; position: relative; }
+        .msg.me { align-self: flex-end; background: var(--green); color: #000; border-bottom-right-radius: 4px; }
+        .msg.other { align-self: flex-start; background: #333; color: #fff; border-bottom-left-radius: 4px; }
+
+        /* Админка */
+        .admin-item { 
+            display: flex; justify-content: space-between; align-items: center; 
+            padding: 15px; background: rgba(255,255,255,0.02); 
+            border-radius: 12px; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;
+        }
+
+        /* Адаптивность под телефоны */
+        @media (max-width: 768px) {
+            nav { padding: 0 10px; height: 60px; }
+            .logo { font-size: 16px; }
+            .nav-links { gap: 8px; }
+            .nav-links span { font-size: 10px; }
+            .chat-wrap { flex-direction: column; height: 85vh; }
+            .chat-list { width: 100%; height: 150px; border-right: none; border-bottom: 1px solid var(--glass); }
+            .grid { grid-template-columns: 1fr; }
+            .container { padding: 10px; }
+        }
+
+        #auth-overlay { 
+            position: fixed; inset: 0; background: var(--dark-bg); z-index: 2000; 
+            display: flex; align-items: center; justify-content: center; padding: 20px;
+        }
     </style>
 </head>
 <body>
 
 <div id="auth-overlay">
-    <div class="card" style="width: 300px; text-align: center;">
-        <h2 style="color: var(--green);">GreenPay</h2>
+    <div class="card" style="width: 100%; max-width: 360px; text-align: center;">
+        <h1 style="color: var(--green); margin-top: 0;">GreenPay</h1>
+        <p style="opacity: 0.5; font-size: 14px;">Введите данные для входа</p>
         <input type="text" id="nick-in" placeholder="Никнейм">
         <input type="password" id="pass-in" placeholder="Пароль">
-        <button onclick="handleAuth()">Войти / Регистрация</button>
+        <button onclick="handleAuth()">Начать работу</button>
     </div>
 </div>
 
 <nav>
-    <div class="logo">GP <span id="adm-badge" style="display:none; color:var(--admin)">[ADMIN]</span></div>
+    <div class="logo">GREENPAY <span id="adm-badge" style="display:none; color:var(--admin); font-size: 10px;">• ADMIN</span></div>
     <div class="nav-links">
-        <span class="active" onclick="setPage('market', this)">МАРКЕТ</span>
-        <span onclick="setPage('sell', this)">ПРОДАТЬ</span>
-        <span id="chat-link" onclick="setPage('chats', this)">ЧАТЫ</span>
-        <span id="adm-link" style="display:none; color:var(--admin)" onclick="setPage('adm-page', this)">АДМИНКА</span>
-        <span onclick="logout()" style="color:var(--admin)">ВЫХОД</span>
+        <span class="active" onclick="setPage('market', this)">Маркет</span>
+        <span onclick="setPage('sell', this)">Продать</span>
+        <span id="chat-link" onclick="setPage('chats', this)">Чаты</span>
+        <span id="adm-link" style="display:none; color:var(--admin)" onclick="setPage('adm-page', this)">Админ</span>
+        <span onclick="logout()" style="opacity: 0.4;">Выход</span>
     </div>
 </nav>
 
 <div class="container">
-    <div id="market" class="page active"><div id="market-render" class="grid"></div></div>
+    <div id="market" class="page active">
+        <h2 style="margin-bottom: 30px;">Витрина товаров</h2>
+        <div id="market-render" class="grid"></div>
+    </div>
 
     <div id="sell" class="page">
-        <div class="card" style="max-width: 400px; margin: auto;">
-            <h3>Продать товар</h3>
-            <input id="prod-desc" placeholder="Название товара">
-            <input type="number" id="prod-price" placeholder="Цена за шт.">
-            <input type="number" id="prod-stock" placeholder="Количество" value="1">
-            <button onclick="publish()">Выставить</button>
+        <div class="card" style="max-width: 500px; margin: 40px auto;">
+            <h2 style="text-align: center; margin-top: 0;">Разместить объявление</h2>
+            <input id="prod-desc" placeholder="Название товара (напр. Аккаунт Steam)">
+            <input type="number" id="prod-price" placeholder="Цена в рублях">
+            <input type="number" id="prod-stock" placeholder="Количество на складе" value="1">
+            <button onclick="publish()">Опубликовать на маркете</button>
         </div>
     </div>
 
     <div id="chats" class="page">
         <div class="chat-wrap">
             <div id="contact-list" class="chat-list"></div>
-            <div id="chat-active" style="display:flex; flex-direction:column; width:100%;">
-                <div style="text-align: center; margin-top: 150px; opacity: 0.3;">Выберите диалог</div>
+            <div id="chat-active" class="chat-main">
+                <div style="text-align: center; margin: auto; opacity: 0.2;">
+                    <h3>Выберите чат для общения</h3>
+                </div>
             </div>
         </div>
     </div>
 
     <div id="adm-page" class="page">
-        <div class="card"><h3>Пользователи и Рейтинг</h3><div id="adm-users"></div></div>
-        <div class="card"><h3>Все товары</h3><div id="adm-items"></div></div>
-        <div class="card"><h3>Управление чатами</h3><div id="adm-chats"></div></div>
-        <button onclick="wipeAllData()" style="background:var(--admin); color:white;">ОЧИСТИТЬ ВСЕ</button>
+        <h2 style="color: var(--admin);">Панель управления</h2>
+        <div class="card">
+            <h3>Пользователи и Рейтинг</h3>
+            <div id="adm-users"></div>
+        </div>
+        <div class="card">
+            <h3>Все товары на продаже</h3>
+            <div id="adm-items"></div>
+        </div>
+        <button onclick="wipeAllData()" class="secondary" style="border: 1px solid var(--admin); color: var(--admin);">СБРОСИТЬ ВСЮ СИСТЕМУ</button>
     </div>
 </div>
 
@@ -108,18 +230,17 @@
 
     let user = localStorage.getItem('gp_nick') || "";
     let isAdmin = false;
-    let activeChatId = null;
 
     if(user) document.getElementById('auth-overlay').style.display = 'none';
 
     async function handleAuth() {
         const n = document.getElementById('nick-in').value.trim();
         const p = document.getElementById('pass-in').value;
-        if(!n || !p) return;
+        if(!n || !p) return alert("Заполните поля!");
         const uRef = db.collection("users").doc(n);
         const d = await uRef.get();
         if(d.exists && d.data().pass !== p) return alert("Неверный пароль!");
-        if(!d.exists) await uRef.set({ nick: n, pass: p, rating: 5 });
+        if(!d.exists) await uRef.set({ nick: n, pass: p, rating: 5.0 });
         localStorage.setItem('gp_nick', n);
         location.reload();
     }
@@ -133,20 +254,27 @@
         if(el) el.classList.add('active');
         if(id === 'chats') document.getElementById('chat-link').classList.remove('dot');
         if(id === 'adm-page') renderAdmin();
+        window.scrollTo(0,0);
     }
 
-    // МАРКЕТ
+    // Рендер Маркета
     db.collection("items").orderBy("t", "desc").onSnapshot(snap => {
         const list = document.getElementById('market-render');
         list.innerHTML = "";
         snap.forEach(doc => {
             const d = doc.data();
-            list.innerHTML += `<div class="product">
-                <b>${d.desc}</b><br>
-                <span style="color:var(--green)">${d.price} ₽</span> | Склад: ${d.stock}
-                <br><small>${d.seller} (★${d.rating})</small>
-                <button onclick="startTrade('${doc.id}', '${d.seller}', ${d.price})">Купить</button>
-            </div>`;
+            list.innerHTML += `
+                <div class="product">
+                    <div>
+                        <h3>${d.desc}</h3>
+                        <small style="opacity:0.5">Продавец: ${d.seller}</small>
+                        <div class="price">${d.price} ₽</div>
+                        <div style="font-size:12px; margin-bottom:15px;">
+                            Рейтинг: <span style="color:var(--green)">★ ${parseFloat(d.rating).toFixed(1)}</span> | В наличии: ${d.stock}
+                        </div>
+                    </div>
+                    <button onclick="startChat('${d.seller}')">Купить / Чат</button>
+                </div>`;
         });
     });
 
@@ -154,13 +282,14 @@
         const d = document.getElementById('prod-desc').value;
         const p = document.getElementById('prod-price').value;
         const s = document.getElementById('prod-stock').value;
+        if(!d || !p) return alert("Введите данные");
         const u = await db.collection("users").doc(user).get();
         await db.collection("items").add({ desc: d, price: p, stock: s, seller: user, t: Date.now(), rating: u.data().rating });
         setPage('market');
     }
 
-    // ЧАТЫ И УВЕДОМЛЕНИЯ
-    function startTrade(itemId, seller, price) {
+    // Чаты
+    function startChat(seller) {
         if(seller === user) return;
         const id = [user, seller].sort().join("_");
         db.collection("chats").doc(id).set({ users: [user, seller], last: Date.now(), unread: seller }, {merge: true});
@@ -169,12 +298,15 @@
     }
 
     function loadMessages(id, other) {
-        activeChatId = id;
-        db.collection("chats").doc(id).update({ unread: "" }); // Читаем чат
+        db.collection("chats").doc(id).update({ unread: "" });
         const box = document.getElementById('chat-active');
-        box.innerHTML = `<div style="padding:10px; border-bottom:1px solid #333;">Чат: ${other}</div>
+        box.innerHTML = `
+            <div style="padding:15px; background: rgba(0,0,0,0.2); font-weight:bold; border-bottom:1px solid var(--glass)">${other}</div>
             <div id="msg-area" class="messages"></div>
-            <div style="padding:10px; display:flex; gap:5px;"><input id="m-in" placeholder="..."><button onclick="sendMsg('${id}')" style="width:50px">></button></div>`;
+            <div style="padding:15px; background: rgba(0,0,0,0.3); display:flex; gap:10px;">
+                <input id="m-in" placeholder="Ваше сообщение..." style="margin:0">
+                <button onclick="sendMsg('${id}')" style="width:80px; margin:0">></button>
+            </div>`;
         
         db.collection("chats").doc(id).collection("messages").orderBy("t").onSnapshot(snap => {
             const area = document.getElementById('msg-area');
@@ -196,78 +328,72 @@
         document.getElementById('m-in').value = "";
     }
 
-    // Слушатель новых сообщений для уведомлений
     db.collection("chats").where("users", "array-contains", user).onSnapshot(snap => {
         const list = document.getElementById('contact-list');
         list.innerHTML = "";
-        let hasUnreadGlobal = false;
+        let hasUnread = false;
         snap.forEach(c => {
             const d = c.data();
             const other = d.users.find(u => u !== user);
             const isUnread = d.unread === user;
-            if(isUnread) hasUnreadGlobal = true;
+            if(isUnread) hasUnread = true;
             list.innerHTML += `<div class="chat-item ${isUnread ? 'unread' : ''}" onclick="loadMessages('${c.id}', '${other}')">💬 ${other}</div>`;
         });
-        if(hasUnreadGlobal) document.getElementById('chat-link').classList.add('dot');
+        if(hasUnread) document.getElementById('chat-link').classList.add('dot');
     });
 
-    // АДМИНКА
+    // Админка
     window.addEventListener('keydown', e => {
-        if(e.key === "F2" && prompt("ADMIN:") === "000") {
+        if(e.key === "F2" && prompt("Пароль админа:") === "000") {
             isAdmin = true;
             document.getElementById('adm-badge').style.display = 'inline';
             document.getElementById('adm-link').style.display = 'inline';
+            alert("Режим администратора включен");
         }
     });
 
     function renderAdmin() {
-        // Юзеры + Рейтинг
+        // Юзеры
         db.collection("users").onSnapshot(snap => {
             const box = document.getElementById('adm-users'); box.innerHTML = "";
             snap.forEach(d => {
                 const u = d.data();
-                box.innerHTML += `<div class="admin-ctrl">
-                    <span>${u.nick} (★${u.rating})</span>
-                    <div>
-                        <input id="r-${u.nick}" type="number" step="0.1" style="width:50px; margin:0">
-                        <button onclick="setRating('${u.nick}')" style="width:40px">OK</button>
-                        <button onclick="db.collection('users').doc('${u.nick}').delete()" style="background:var(--admin); width:40px">X</button>
+                box.innerHTML += `
+                <div class="admin-item">
+                    <span>${u.nick} (★${parseFloat(u.rating).toFixed(1)})</span>
+                    <div style="display:flex; gap:5px;">
+                        <input id="r-${u.nick}" type="number" placeholder="0-5" style="width:60px; margin:0; padding:5px;">
+                        <button onclick="updateRating('${u.nick}')" style="width:50px; padding:5px; margin:0;">OK</button>
+                        <button onclick="db.collection('users').doc('${u.nick}').delete()" style="background:var(--admin); width:50px; padding:5px; margin:0;">BAN</button>
                     </div>
                 </div>`;
             });
         });
-        // Товары
+        // Все товары
         db.collection("items").onSnapshot(snap => {
             const box = document.getElementById('adm-items'); box.innerHTML = "";
             snap.forEach(d => {
-                box.innerHTML += `<div class="admin-ctrl"><span>${d.data().desc}</span><button onclick="db.collection('items').doc('${d.id}').delete()" style="background:var(--admin); width:60px">Del</button></div>`;
-            });
-        });
-        // Чаты
-        db.collection("chats").onSnapshot(snap => {
-            const box = document.getElementById('adm-chats'); box.innerHTML = "";
-            snap.forEach(d => {
-                box.innerHTML += `<div class="admin-ctrl"><span>${d.id}</span><button onclick="deleteChat('${d.id}')" style="background:var(--admin); width:60px">Del</button></div>`;
+                box.innerHTML += `
+                <div class="admin-item">
+                    <span>${d.data().desc} (${d.data().seller})</span>
+                    <button onclick="db.collection('items').doc('${d.id}').delete()" style="background:var(--admin); width:80px; margin:0; padding:5px;">Удалить</button>
+                </div>`;
             });
         });
     }
 
-    async function setRating(nick) {
-        let val = document.getElementById('r-'+nick).value;
+    async function updateRating(nick) {
+        let val = parseFloat(document.getElementById('r-'+nick).value);
+        if(isNaN(val)) return;
         if(val > 5) val = 5; if(val < 0) val = 0;
         await db.collection("users").doc(nick).update({ rating: val });
         const items = await db.collection("items").where("seller", "==", nick).get();
         items.forEach(it => db.collection("items").doc(it.id).update({ rating: val }));
-    }
-
-    async function deleteChat(id) {
-        const msgs = await db.collection("chats").doc(id).collection("messages").get();
-        msgs.forEach(m => m.ref.delete());
-        await db.collection("chats").doc(id).delete();
+        alert("Рейтинг " + nick + " изменен на " + val);
     }
 
     async function wipeAllData() {
-        if(confirm("УДАЛИТЬ ВСЕ?")) {
+        if(confirm("ВЫ УВЕРЕНЫ? Все данные будут стерты!")) {
             ['users','items','chats'].forEach(async col => {
                 const s = await db.collection(col).get();
                 s.forEach(d => d.ref.delete());
