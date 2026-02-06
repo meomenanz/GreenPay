@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GreenPay | Multi-Purchase Edition</title>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore-compat.js"></script>
+    <style>
+        :root { --green: #2ecc71; --dark: #0d0d0d; --card: #181818; --text: #ffffff; --admin: #ff4757; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--dark); color: var(--text); margin: 0; }
+        nav { background: #000; padding: 0 20px; display: flex; align-items: center; height: 60px; border-bottom: 2px solid var(--green); justify-content: space-between; position: sticky; top: 0; z-index: 1000; }
+        .logo { font-size: 22px; font-weight: 900; color: var(--green); }
+        .nav-links span { margin-left: 15px; cursor: pointer; font-size: 13px; font-weight: 600; opacity: 0.7; }
+        .nav-links span.active { opacity: 1; color: var(--green); }
+        
+        #auth-overlay { position: fixed; inset: 0; background: var(--dark); z-index: 2000; display: flex; align-items: center; justify-content: center; }
+        .container { max-width: 1000px; margin: 20px auto; padding: 0 15px; }
+        .page { display: none; } .page.active { display: block; }
+        .card { background: var(--card); border-radius: 12px; padding: 20px; border: 1px solid #2a2a2a; margin-bottom: 15px; }
+        
+        input, select, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #333; background: #222; color: white; box-sizing: border-box; }
+        button { background: var(--green); color: #000; font-weight: bold; border: none; cursor: pointer; }
+        
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
+        .product { background: var(--card); border: 1px solid #2a2a2a; border-radius: 12px; padding: 15px; }
+        .product-meta { display: flex; align-items: center; gap: 10px; margin: 10px 0; }
+        .qty-input { width: 70px !important; margin: 0 !important; text-align: center; }
+
+        .chat-wrap { display: grid; grid-template-columns: 200px 1fr; height: 450px; background: var(--card); border-radius: 12px; border: 1px solid #333; overflow: hidden; }
+        .chat-list { background: #111; border-right: 1px solid #333; overflow-y: auto; }
+        .chat-item { padding: 10px; border-bottom: 1px solid #222; cursor: pointer; font-size: 13px; }
+        .messages { flex-grow: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; background: #0a0a0a; }
+        .msg { max-width: 75%; padding: 8px 12px; border-radius: 10px; font-size: 14px; }
+        .msg.me { align-self: flex-end; background: var(--green); color: black; }
+        .msg.other { align-self: flex-start; background: #333; }
+        .msg.spy { align-self: center; background: var(--admin); color: white; font-size: 10px; }
+
+        .admin-ctrl { border-left: 3px solid var(--admin); padding: 10px; background: #1a1a1a; margin-bottom: 10px; border-radius: 0 8px 8px 0; }
+        .pay-banner { background: #f1c40f; color: #000; padding: 10px; display: flex; justify-content: space-between; align-items: center; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div id="auth-overlay">
+    <div class="card" style="width: 300px; text-align: center;">
+        <h2 style="color: var(--green);">GreenPay</h2>
+        <input type="text" id="nick-in" placeholder="Никнейм">
+        <input type="password" id="pass-in" placeholder="Пароль">
+        <button onclick="handleAuth()">Войти / Регистрация</button>
+    </div>
+</div>
+
+<nav>
+    <div class="logo">GP <span id="adm-badge" style="display:none; color:var(--admin)">[ADMIN]</span></div>
+    <div class="nav-links">
+        <span class="active" onclick="setPage('market', this)">МАРКЕТ</span>
+        <span onclick="setPage('sell', this)">ПРОДАТЬ</span>
+        <span onclick="setPage('chats', this)">ЧАТЫ</span>
+        <span id="adm-link" style="display:none; color:var(--admin)" onclick="setPage('adm-page', this)">АДМИНКА</span>
+        <span onclick="logout()" style="color:var(--admin)">ВЫХОД</span>
+    </div>
+</nav>
+
+<div class="container">
+    <div id="market" class="page active"><div id="market-render" class="grid"></div></div>
+
+    <div id="sell" class="page">
+        <div class="card" style="max-width: 400px; margin: auto;">
+            <h3>Выставить товар</h3>
+            <input id="prod-desc" placeholder="Описание (напр. GTA 5 Аккаунт)">
+            <input type="number" id="prod-price" placeholder="Цена за 1 шт (₽)">
+            <input type="number" id="prod-stock" placeholder="Кол-во в наличии" value="1" min="1">
+            <button onclick="publish()">Опубликовать</button>
+        </div>
+    </div>
+
+    <div id="chats" class="page">
+        <div class="chat-wrap">
+            <div id="contact-list" class="chat-list"></div>
+            <div id="chat-active" style="display:flex; flex-direction:column; width:100%;">
+                <div style="text-align: center; margin-top: 150px; opacity: 0.3;">Выберите диалог</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="adm-page" class="page">
+        <div class="card"><h3>Пользователи</h3><div id="adm-users"></div></div>
+        <div class="card"><h3>Активные чаты</h3><div id="adm-chats"></div></div>
+        <button class="danger-btn" onclick="wipeAllData()" style="background:var(--admin); color:white;">ОЧИСТИТЬ ВСЮ БАЗУ</button>
+    </div>
+</div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyApfEncKdafvvXaUmtTclPiDJPyrcuD7SQ",
+        authDomain: "greenpay-34957.firebaseapp.com",
+        projectId: "greenpay-34957",
+        storageBucket: "greenpay-34957.firebasestorage.app",
+        messagingSenderId: "990792295519",
+        appId: "1:990792295519:web:5ba691f1f8eb896db8a7ea"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    let user = localStorage.getItem('gp_nick') || "";
+    let isAdmin = false;
+
+    if(user) document.getElementById('auth-overlay').style.display = 'none';
+
+    async function handleAuth() {
+        const n = document.getElementById('nick-in').value.trim();
+        const p = document.getElementById('pass-in').value;
+        if(!n || !p) return;
+        const uRef = db.collection("users").doc(n);
+        const d = await uRef.get();
+        if(d.exists && d.data().pass !== p) return alert("Неверный пароль!");
+        if(!d.exists) await uRef.set({ nick: n, pass: p, rating: 5 });
+        localStorage.setItem('gp_nick', n);
+        location.reload();
+    }
+
+    function logout() { localStorage.removeItem('gp_nick'); location.reload(); }
+
+    function setPage(id, el) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.nav-links span').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        if(el) el.classList.add('active');
+        if(id === 'adm-page') renderAdmin();
+    }
+
+    // Маркет
+    db.collection("items").orderBy("t", "desc").onSnapshot(snap => {
+        const list = document.getElementById('market-render');
+        list.innerHTML = "";
+        snap.forEach(doc => {
+            const d = doc.data();
+            const id = doc.id;
+            list.innerHTML += `<div class="product">
+                <b>${d.desc}</b>
+                <div style="color:var(--green); font-size: 20px; margin: 5px 0;">${d.price} ₽ / шт.</div>
+                <small>Продавец: ${d.seller} (★${d.rating})</small><br>
+                <small>В наличии: ${d.stock || 1} шт.</small>
+                <div class="product-meta">
+                    <input type="number" id="qty-${id}" class="qty-input" value="1" min="1" max="${d.stock || 1000}">
+                    <button onclick="startTrade('${id}', '${d.seller}', ${d.price})">Купить</button>
+                </div>
+            </div>`;
+        });
+    });
+
+    async function publish() {
+        const d = document.getElementById('prod-desc').value;
+        const p = parseFloat(document.getElementById('prod-price').value);
+        const s = parseInt(document.getElementById('prod-stock').value);
+        if(!d || isNaN(p) || isNaN(s)) return alert("Заполните все поля");
+        const u = await db.collection("users").doc(user).get();
+        await db.collection("items").add({ desc: d, price: p, stock: s, seller: user, t: Date.now(), rating: u.data().rating });
+        setPage('market');
+    }
+
+    function startTrade(itemId, seller, price) {
+        if(seller === user) return alert("Нельзя купить у себя");
+        const qty = parseInt(document.getElementById('qty-'+itemId).value);
+        if(qty < 1) return;
+        
+        const chatId = [user, seller].sort().join("_");
+        // Сохраняем информацию о сделке в документ чата
+        db.collection("chats").doc(chatId).set({ 
+            users: [user, seller], 
+            last: Date.now(),
+            trade: { price: price, qty: qty, item: itemId } 
+        }, {merge: true});
+        
+        setPage('chats');
+        loadMessages(chatId, seller);
+    }
+
+    function loadMessages(id, other) {
+        db.collection("chats").doc(id).get().then(doc => {
+            const chatData = doc.data();
+            const trade = chatData.trade || { price: 0, qty: 1 };
+            const total = trade.price * trade.qty;
+
+            const box = document.getElementById('chat-active');
+            box.innerHTML = `
+                <div class="pay-banner">
+                    <span>К оплате: ${total} ₽ (${trade.qty} шт.)</span>
+                    <button style="width:auto; padding:5px 15px; background:#000; color:#fff;" onclick="alert('Счет на ${total}₽ выставлен продавцу')">ОПЛАТИТЬ</button>
+                </div>
+                <div id="msg-area" class="messages"></div>
+                <div style="padding:10px; display:flex; gap:5px;"><input id="m-in" placeholder="Напишите сообщение..."><button onclick="sendMsg('${id}')" style="width:50px">></button></div>`;
+            
+            // Подписка на сообщения
+            db.collection("chats").doc(id).collection("messages").orderBy("t").onSnapshot(snap => {
+                const area = document.getElementById('msg-area');
+                if(!area) return; area.innerHTML = "";
+                snap.forEach(m => {
+                    const d = m.data();
+                    const cls = d.f === user ? 'me' : (d.f === 'ADMIN' ? 'spy' : 'other');
+                    area.innerHTML += `<div class="msg ${cls}">${d.f === 'ADMIN' ? '[ADM]: ' : ''}${d.m}</div>`;
+                });
+                area.scrollTop = area.scrollHeight;
+            });
+        });
+    }
+
+    function sendMsg(id) {
+        const m = document.getElementById('m-in').value;
+        if(!m) return;
+        db.collection("chats").doc(id).collection("messages").add({ f: isAdmin ? 'ADMIN' : user, m, t: Date.now() });
+        document.getElementById('m-in').value = "";
+    }
+
+    // Админка
+    window.addEventListener('keydown', e => {
+        if(e.key === "F2" && prompt("ADMIN:") === "000") {
+            isAdmin = true;
+            document.getElementById('adm-badge').style.display = 'inline';
+            document.getElementById('adm-link').style.display = 'inline';
+        }
+    });
+
+    function renderAdmin() {
+        db.collection("users").onSnapshot(snap => {
+            const box = document.getElementById('adm-users'); box.innerHTML = "";
+            snap.forEach(d => {
+                const u = d.data();
+                box.innerHTML += `<div class="admin-ctrl">
+                    <b>${u.nick}</b> (★${u.rating})
+                    <button onclick="db.collection('users').doc('${u.nick}').delete()" style="background:var(--admin); float:right;">BAN</button>
+                </div>`;
+            });
+        });
+        db.collection("chats").onSnapshot(snap => {
+            const box = document.getElementById('adm-chats'); box.innerHTML = "";
+            snap.forEach(d => {
+                box.innerHTML += `<div class="admin-ctrl">
+                    Чат: ${d.id} 
+                    <button onclick="db.collection('chats').doc('${d.id}').delete()" style="background:var(--admin); float:right;">DEL</button>
+                </div>`;
+            });
+        });
+    }
+
+    async function wipeAllData() {
+        if(!confirm("Удалить ВСЕ данные?")) return;
+        ['users', 'items', 'chats'].forEach(async col => {
+            const snap = await db.collection(col).get();
+            snap.forEach(d => d.ref.delete());
+        });
+        location.reload();
+    }
+
+    db.collection("chats").where("users", "array-contains", user).onSnapshot(snap => {
+        const list = document.getElementById('contact-list'); list.innerHTML = "";
+        snap.forEach(c => {
+            const other = c.data().users.find(u => u !== user);
+            list.innerHTML += `<div class="chat-item" onclick="loadMessages('${c.id}', '${other}')">💬 ${other}</div>`;
+        });
+    });
+</script>
+</body>
+</html>
